@@ -17,14 +17,14 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Step 3: Server Status Check / Ping
+    // Step 3: Server Status Check / Wake
     setPinging(true);
     try {
       window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
-      await healthService.ping();
+      await healthService.wakeServer();
       window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
     } catch (err) {
-      // If ping fails initially, it will retry inside api.js
+      // Background retry in axios interceptor will handle this
     } finally {
       setPinging(false);
     }

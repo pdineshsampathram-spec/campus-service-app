@@ -8,8 +8,12 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  timeout: 30000, // 30s timeout for cold starts
+  timeout: 15000, // 15s timeout as requested for production stability
 });
+
+// ... (interceptors omitted for brevity in replace_file_content if possible, but I'll replace the block)
+// I will keep the interceptors but update the timeout and healthService.
+
 
 // Attach JWT token to every request
 api.interceptors.request.use((config) => {
@@ -106,6 +110,14 @@ api.interceptors.response.use(
 // Health Check / Ping
 export const healthService = {
   ping: (signal) => api.get('/', { signal }),
+  wakeServer: async () => {
+    try {
+      await api.get('/health', { timeout: 10000 });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 };
 
 // Auth

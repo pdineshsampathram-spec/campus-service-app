@@ -312,6 +312,12 @@ async def root():
         "status": "API running"
     }
 
+@app.get("/health")
+async def health():
+    return {
+        "status": "running"
+    }
+
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats(current_user: dict = __import__('fastapi').Depends(__import__('auth').get_current_user)):
     from database import (
