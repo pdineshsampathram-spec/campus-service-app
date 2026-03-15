@@ -8,7 +8,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  timeout: 15000, // 15s timeout as requested for production stability
+  timeout: 20000, // 20s timeout as requested for production stability
 });
 
 // ... (interceptors omitted for brevity in replace_file_content if possible, but I'll replace the block)
@@ -70,7 +70,7 @@ api.interceptors.response.use(
     
     if (isRetryable && config && config.metadata.retryCount < 3) {
       config.metadata.retryCount += 1;
-      const delay = 2000; // 2s delay as requested
+      const delay = 3000; // 3s delay as requested
       
       console.log(`⚠️ Server waking up. Retrying in ${delay}ms... (Attempt ${config.metadata.retryCount})`);
       window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));

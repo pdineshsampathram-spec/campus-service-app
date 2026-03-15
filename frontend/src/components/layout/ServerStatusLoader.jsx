@@ -28,7 +28,7 @@ export default function ServerStatusLoader() {
              <Loader2 size={10} className="absolute -top-1 -right-1 animate-spin text-indigo-400" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold">Starting server… please wait</span>
+            <span className="text-sm font-bold">Starting server… please wait a few seconds.</span>
             <span className="text-[10px] opacity-60">This may take 30-50 seconds on Render</span>
           </div>
         </motion.div>
