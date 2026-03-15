@@ -308,20 +308,8 @@ async def startup_event():
 
 @app.get("/")
 async def root():
-    from database import db
-    mode = "MOCK" if hasattr(db, "__dict__") and "MockDB" in str(type(db)) else "LOCKED"
-    try:
-         # More reliable check
-         from database import MockDB
-         if isinstance(db, MockDB): mode = "MOCK"
-         else: mode = "LIVE"
-    except: pass
-
     return {
-        "message": "Campus Service Platform API",
-        "version": "1.0.0",
-        "mode": mode,
-        "status": "running"
+        "status": "API running"
     }
 
 @app.get("/api/dashboard/stats")
