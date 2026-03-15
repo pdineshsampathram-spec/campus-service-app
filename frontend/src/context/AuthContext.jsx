@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
     const stored = localStorage.getItem('campus_user');
     return stored ? JSON.parse(stored) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem('campus_token'));
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(false);
 
   const login = useCallback(async (email, password) => {
@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
       const { data } = await authService.login({ email, password });
       setToken(data.access_token);
       setUser(data.user);
-      localStorage.setItem('campus_token', data.access_token);
+      localStorage.setItem('token', data.access_token);
       localStorage.setItem('campus_user', JSON.stringify(data.user));
       return { success: true };
     } catch (err) {
@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
       const { data } = await authService.register(formData);
       setToken(data.access_token);
       setUser(data.user);
-      localStorage.setItem('campus_token', data.access_token);
+      localStorage.setItem('token', data.access_token);
       localStorage.setItem('campus_user', JSON.stringify(data.user));
       return { success: true };
     } catch (err) {
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('campus_token');
+    localStorage.removeItem('token');
     localStorage.removeItem('campus_user');
   }, []);
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -9,16 +9,29 @@ const api = axios.create({
 
 // Attach JWT token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('campus_token');
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Track request start for cold-start detection
+  config.metadata = { startTime: new Date() };
+  config.wakingTimer = setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
+  }, 1500); // If no response in 1.5s, show waking message
+  
   return config;
 });
 
 // Standardize response unwrapping
 api.interceptors.response.use(
   (response) => {
+    // Clear waking timer
+    if (response.config.wakingTimer) {
+      clearTimeout(response.config.wakingTimer);
+      window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
+    }
+    
     // Backend returns { success, data, message }
     const { success, data, message } = response.data;
     
@@ -33,12 +46,18 @@ api.interceptors.response.use(
     });
   },
   (error) => {
+    // Clear waking timer on error
+    if (error.config?.wakingTimer) {
+      clearTimeout(error.config.wakingTimer);
+      window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
+    }
+
     if (axios.isCancel(error)) {
       return Promise.reject(error);
     }
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('campus_token');
+      localStorage.removeItem('token');
       localStorage.removeItem('campus_user');
       window.location.href = '/login';
     }

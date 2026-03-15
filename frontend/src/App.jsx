@@ -26,6 +26,8 @@ const PageLoader = () => (
 
 import ErrorBoundary from './components/layout/ErrorBoundary';
 
+import ServerStatusLoader from './components/layout/ServerStatusLoader';
+
 function App() {
   return (
     <ErrorBoundary>
@@ -66,6 +68,7 @@ function App() {
               </Routes>
             </Suspense>
             <AIChatbot />
+            <ServerStatusLoader />
           </BrowserRouter>
         </CartProvider>
       </AuthProvider>
