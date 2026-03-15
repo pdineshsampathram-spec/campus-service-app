@@ -66,9 +66,9 @@ api.interceptors.response.use(
     
     if (isRetryable && config && config.metadata.retryCount < 3) {
       config.metadata.retryCount += 1;
-      const delay = Math.pow(2, config.metadata.retryCount) * 1000; // Exponential backoff
+      const delay = 2000; // Fixed 2s delay as requested
       
-      console.log(`⚠️ Server cold start or busy. Retrying in ${delay}ms... (Attempt ${config.metadata.retryCount})`);
+      console.log(`⚠️ Server waking up. Retrying in ${delay}ms... (Attempt ${config.metadata.retryCount})`);
       window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
       
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -82,14 +82,18 @@ api.interceptors.response.use(
     if (response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('campus_user');
-      // Only redirect if not already on login/register to avoid loops
       if (!['/login', '/register'].includes(window.location.pathname)) {
         window.location.href = '/login';
       }
     }
 
     const backendError = response?.data;
-    const errorMsg = backendError?.message || backendError?.detail || error.message || 'An unexpected error occurred';
+    let errorMsg = backendError?.message || backendError?.detail || error.message || 'An unexpected error occurred';
+    
+    // Friendly message for cold starts/network issues
+    if (isRetryable) {
+      errorMsg = "Server is starting. Please wait a moment.";
+    }
     
     return Promise.reject({
       success: false,
@@ -98,6 +102,11 @@ api.interceptors.response.use(
     });
   }
 );
+
+// Health Check / Ping
+export const healthService = {
+  ping: (signal) => api.get('/', { signal }),
+};
 
 // Auth
 export const authService = {

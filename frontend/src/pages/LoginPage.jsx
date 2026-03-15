@@ -3,17 +3,32 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { GraduationCap, Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { healthService } from '../services/api';
 import AnimatedBackground from '../components/layout/AnimatedBackground';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
+  const [pinging, setPinging] = useState(false);
   const { login, loading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Step 3: Server Status Check / Ping
+    setPinging(true);
+    try {
+      window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
+      await healthService.ping();
+      window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
+    } catch (err) {
+      // If ping fails initially, it will retry inside api.js
+    } finally {
+      setPinging(false);
+    }
+
     const result = await login(form.email, form.password);
     if (result.success) {
       toast.success('Welcome back! 👋');
@@ -86,8 +101,8 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 py-3 mt-2">
-              {loading ? (
+            <button type="submit" disabled={loading || pinging} className="btn-primary w-full flex items-center justify-center gap-2 py-3 mt-2">
+              {loading || pinging ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <><LogIn size={16} /> Sign In</>
