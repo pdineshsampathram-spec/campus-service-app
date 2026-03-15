@@ -23,10 +23,17 @@ def exam_helper(exam) -> dict:
 
 @router.get("/")
 async def get_exams(current_user: dict = Depends(get_current_user)):
-    exams = []
-    async for exam in exam_notifications_collection.find().sort("date", 1):
-        exams.append(exam_helper(exam))
-    return exams
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            return []
+        exams = []
+        async for exam in db["exam_notifications"].find().sort("date", 1):
+            exams.append(exam_helper(exam))
+        return exams
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/", response_model=ExamNotificationResponse)
 async def create_exam(exam_data: ExamNotificationCreate, current_user: dict = Depends(get_current_user)):
@@ -44,15 +51,26 @@ async def create_exam(exam_data: ExamNotificationCreate, current_user: dict = De
         "created_at": datetime.now(timezone.utc),
     }
     try:
-        await exam_notifications_collection.insert_one(exam_doc)
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=533, detail="Database connection unavailable")
+        await db["exam_notifications"].insert_one(exam_doc)
         return exam_helper(exam_doc)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/upcoming")
 async def get_upcoming_exams(current_user: dict = Depends(get_current_user)):
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    exams = []
-    async for exam in exam_notifications_collection.find({"date": {"$gte": today}}).sort("date", 1).limit(10):
-        exams.append(exam_helper(exam))
-    return exams
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            return []
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        exams = []
+        async for exam in db["exam_notifications"].find({"date": {"$gte": today}}).sort("date", 1).limit(10):
+            exams.append(exam_helper(exam))
+        return exams
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

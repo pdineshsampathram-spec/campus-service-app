@@ -35,23 +35,43 @@ async def create_order(order_data: OrderCreate, current_user: dict = Depends(get
         "created_at": datetime.now(timezone.utc),
     }
     try:
-        await orders_collection.insert_one(order_doc)
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=533, detail="Database connection unavailable")
+        await db["orders"].insert_one(order_doc)
         return order_helper(order_doc)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-orders")
 async def get_my_orders(current_user: dict = Depends(get_current_user)):
-    orders = []
-    cursor = orders_collection.find({"user_id": str(current_user["_id"])})
-    cursor.sort("created_at", -1)
-    async for order in cursor:
-        orders.append(order_helper(order))
-    return orders
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            return []
+        orders = []
+        cursor = db["orders"].find({"user_id": str(current_user["_id"])})
+        cursor.sort("created_at", -1)
+        async for order in cursor:
+            orders.append(order_helper(order))
+        return orders
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{order_id}", response_model=OrderResponse)
 async def get_order(order_id: str, current_user: dict = Depends(get_current_user)):
-    order = await orders_collection.find_one({"_id": order_id, "user_id": str(current_user["_id"])})
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return order_helper(order)
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=533, detail="Database connection unavailable")
+        order = await db["orders"].find_one({"_id": order_id, "user_id": str(current_user["_id"])})
+        if order is None:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return order_helper(order)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

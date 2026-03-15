@@ -40,31 +40,52 @@ async def create_complaint(complaint_data: ComplaintCreate, current_user: dict =
         "created_at": datetime.now(timezone.utc),
     }
     try:
-        await complaints_collection.insert_one(complaint_doc)
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=533, detail="Database connection unavailable")
+        await db["complaints"].insert_one(complaint_doc)
         return complaint_helper(complaint_doc)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-complaints")
 async def get_my_complaints(current_user: dict = Depends(get_current_user)):
-    complaints = []
-    cursor = complaints_collection.find({"user_id": str(current_user["_id"])})
-    cursor.sort("created_at", -1)
-    async for c in cursor:
-        complaints.append(complaint_helper(c))
-    return complaints
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            return []
+        complaints = []
+        cursor = db["complaints"].find({"user_id": str(current_user["_id"])})
+        cursor.sort("created_at", -1)
+        async for c in cursor:
+            complaints.append(complaint_helper(c))
+        return complaints
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.patch("/{complaint_id}/status")
 async def update_status(complaint_id: str, status: str, current_user: dict = Depends(get_current_user)):
-    valid = ["open", "in_progress", "resolved", "closed"]
-    if status not in valid:
-        raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {valid}")
-    
-    # Check ownership
-    result = await complaints_collection.update_one(
-        {"_id": complaint_id, "user_id": str(current_user["_id"])},
-        {"$set": {"status": status}}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Complaint not found or unauthorized")
-    return {"message": "Status updated successfully"}
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=533, detail="Database connection unavailable")
+            
+        valid = ["open", "in_progress", "resolved", "closed"]
+        if status not in valid:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {valid}")
+        
+        # Check ownership
+        result = await db["complaints"].update_one(
+            {"_id": complaint_id, "user_id": str(current_user["_id"])},
+            {"$set": {"status": status}}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Complaint not found or unauthorized")
+        return {"message": "Status updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

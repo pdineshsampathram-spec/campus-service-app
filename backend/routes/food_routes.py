@@ -61,20 +61,26 @@ CANTEENS_DATA = [
 @router.get("/canteens", response_model=List[Canteen])
 async def get_canteens(_: dict = Depends(get_current_user)):
     try:
-        # Use the decentralized proxy as get_database() for MOCK support
-        from database import db
+        from core.database import get_database
+        db = get_database()
+        
+        # If db is None (MOCK mode or connection failed), return seed data
+        if db is None:
+            return CANTEENS_DATA
+            
         canteens = await db["canteens"].find().to_list(100)
         
-        if canteens is not None and len(canteens) > 0:
-            # Convert MongoDB _id to string for model compliance
-            for c in canteens:
-                c["id"] = str(c["_id"])
-            return canteens
+        if not canteens:
+            # Seed default data if empty
+            await db["canteens"].insert_many(CANTEENS_DATA)
+            canteens = CANTEENS_DATA
         
-        # Fallback to seed data if collection is empty
-        return CANTEENS_DATA
+        # Convert _id to string for model compliance
+        for c in canteens:
+            if "_id" in c:
+                c["id"] = str(c["_id"])
+        return canteens
     except Exception as e:
-        # Fallback for transient errors or missing collection
         print(f"⚠️ Error fetching canteens: {e}")
         return CANTEENS_DATA
 

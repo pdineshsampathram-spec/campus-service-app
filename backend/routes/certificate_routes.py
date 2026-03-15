@@ -44,24 +44,44 @@ async def request_certificate(cert_data: CertificateRequestCreate, current_user:
         "created_at": datetime.now(timezone.utc),
     }
     try:
-        await certificate_requests_collection.insert_one(cert_doc)
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=533, detail="Database connection unavailable")
+        await db["certificate_requests"].insert_one(cert_doc)
         return cert_helper(cert_doc)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-requests")
 async def get_my_requests(current_user: dict = Depends(get_current_user)):
-    certs = []
-    async for c in certificate_requests_collection.find({"user_id": str(current_user["_id"])}).sort("created_at", -1):
-        certs.append(cert_helper(c))
-    return certs
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            return []
+        certs = []
+        async for c in db["certificate_requests"].find({"user_id": str(current_user["_id"])}).sort("created_at", -1):
+            certs.append(cert_helper(c))
+        return certs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{cert_id}", response_model=CertificateRequestResponse)
 async def get_certificate(cert_id: str, current_user: dict = Depends(get_current_user)):
-    cert = await certificate_requests_collection.find_one({
-        "_id": cert_id,
-        "user_id": str(current_user["_id"])
-    })
-    if cert is None:
-        raise HTTPException(status_code=404, detail="Certificate request not found")
-    return cert_helper(cert)
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=533, detail="Database connection unavailable")
+        cert = await db["certificate_requests"].find_one({
+            "_id": cert_id,
+            "user_id": str(current_user["_id"])
+        })
+        if cert is None:
+            raise HTTPException(status_code=404, detail="Certificate request not found")
+        return cert_helper(cert)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

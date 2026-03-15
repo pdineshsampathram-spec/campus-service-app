@@ -29,13 +29,18 @@ async def get_today_seats():
 @router.get("/seats/{date}")
 async def get_seats_status(date: str):
     try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            return [] # Fallback for mock/fail
+
         # Initialize seats for this date if not exists or return existing
         seats = []
         rows = ['A', 'B', 'C', 'D', 'E', 'F']
         for row in rows:
             for col in range(1, 11):
                 seat_id = f"F1-{row}{col}"
-                booking = await library_bookings_collection.find_one({
+                booking = await db["library_bookings"].find_one({
                     "seat_id": seat_id,
                     "date": date,
                     "status": "confirmed"
@@ -51,98 +56,98 @@ async def get_seats_status(date: str):
 
 @router.post("/book-seat", response_model=LibraryBookingResponse)
 async def book_seat(booking_data: LibraryBookingCreate, current_user: dict = Depends(get_current_user)):
-    user_id = str(current_user["_id"])
-    
-    # Create the booking document
-    booking_id = str(uuid.uuid4())
-    booking_doc = {
-        "_id": booking_id,
-        "user_id": user_id,
-        "seat_id": booking_data.seat_id,
-        "date": booking_data.date,
-        "start_time": booking_data.start_time,
-        "end_time": booking_data.end_time,
-        "floor": booking_data.floor,
-        "zone": booking_data.zone,
-        "status": "confirmed",
-        "created_at": datetime.now(timezone.utc),
-    }
-
     try:
-        # Atomic insertion with unique index protection
-        await library_bookings_collection.insert_one(booking_doc)
-        
-        # Update real-time seat collection (best-effort secondary tracking)
-        await library_seats_collection.update_one(
-            {"seat_id": booking_data.seat_id, "date": booking_data.date},
-            {"$set": {
-                "isBooked": True,
-                "bookedBy": user_id,
-                "timestamp": datetime.now(timezone.utc)
-            }},
-        )
-        
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection unavailable")
+
+        # Check if seat is already booked
+        existing = await db["library_bookings"].find_one({
+            "seat_id": booking_data.seat_id,
+            "date": booking_data.date,
+            "status": "confirmed"
+        })
+        if existing is not None:
+            raise HTTPException(status_code=400, detail="Seat is already booked for this date")
+
+        booking_id = str(uuid.uuid4())
+        booking_doc = {
+            "_id": booking_id,
+            "user_id": str(current_user["_id"]),
+            "seat_id": booking_data.seat_id,
+            "date": booking_data.date,
+            "start_time": booking_data.start_time,
+            "end_time": booking_data.end_time,
+            "floor": booking_data.floor,
+            "zone": booking_data.zone,
+            "status": "confirmed",
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db["library_bookings"].insert_one(booking_doc)
         return booking_helper(booking_doc)
+    except HTTPException:
+        raise
     except Exception as e:
-        # Check for duplicate key error (MongoDB code 11000)
-        error_str = str(e)
-        if "duplicate key" in error_str.lower() or "11000" in error_str:
-            # Determine which constraint failed
-            if "user_id" in error_str:
-                raise HTTPException(status_code=400, detail="You already have a confirmed booking for this date")
-            raise HTTPException(status_code=400, detail="This seat has already been booked by another user")
-        
-        # For MockCollection or other errors, fallback to a safer check if needed
-        raise HTTPException(status_code=500, detail=f"Booking failed: {error_str}")
+        raise HTTPException(status_code=500, detail=f"Booking failed: {str(e)}")
 
 @router.get("/my-bookings")
 async def get_my_bookings(current_user: dict = Depends(get_current_user)):
-    bookings = []
-    cursor = library_bookings_collection.find({"user_id": str(current_user["_id"])})
-    cursor.sort("created_at", -1)
-    async for b in cursor:
-        bookings.append(booking_helper(b))
-    return bookings
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            return []
+            
+        bookings = []
+        cursor = db["library_bookings"].find({"user_id": str(current_user["_id"])})
+        cursor.sort("created_at", -1)
+        async for b in cursor:
+            bookings.append(booking_helper(b))
+        return bookings
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/cancel/{booking_id}")
 async def cancel_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
-    booking = await library_bookings_collection.find_one({"_id": booking_id, "user_id": str(current_user["_id"])})
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    
-    await library_bookings_collection.update_one(
-        {"_id": booking_id},
-        {"$set": {"status": "cancelled"}}
-    )
-    
-    # Also update seat status
-    await library_seats_collection.delete_one({"seat_id": booking["seat_id"], "date": booking["date"]})
-    
-    return {"message": "Booking cancelled successfully"}
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection unavailable")
+            
+        result = await db["library_bookings"].update_one(
+            {"_id": booking_id, "user_id": str(current_user["_id"])},
+            {"$set": {"status": "cancelled"}}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        return {"message": "Booking cancelled successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/unbook-seat/{seat_id}")
 async def unbook_seat(seat_id: str, current_user: dict = Depends(get_current_user)):
-    user_id = str(current_user["_id"])
-    
-    # Find the active confirmed booking for this user and seat
-    booking = await library_bookings_collection.find_one({
-        "seat_id": seat_id,
-        "user_id": user_id,
-        "status": "confirmed"
-    })
-    
-    if not booking:
-        raise HTTPException(status_code=404, detail="Active booking for this seat not found")
-    
-    # Update booking to cancelled
-    await library_bookings_collection.update_one(
-        {"_id": booking["_id"]},
-        {"$set": {"status": "cancelled"}}
-    )
-    
-    # Mark seat as available in real-time tracking
-    await library_seats_collection.delete_one({
-        "seat_id": seat_id,
-        "date": booking["date"]
-    })
-    
-    return {"message": f"Successfully unbooked seat {seat_id}"}
+    try:
+        from core.database import get_database
+        db = get_database()
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database connection unavailable")
+
+        # Delete from seats status and update/remove from bookings (unbook-seat typically removes confirmed entries)
+        result = await db["library_bookings"].delete_one({
+            "seat_id": seat_id,
+            "user_id": str(current_user["_id"]),
+            "status": "confirmed"
+        })
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="No active booking found for this seat")
+            
+        return {"message": "Booking cancelled successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

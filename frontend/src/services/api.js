@@ -162,7 +162,7 @@ export const libraryService = {
   getTodaySeats: (signal) => api.get('/api/library/seats', { signal }),
   getSeatsStatus: (date, signal) => api.get(`/api/library/seats/${date}`, { signal }),
   cancelBooking: (id, signal) => api.delete(`/api/library/cancel/${id}`, { signal }),
-  unbookSeat: (seatId, signal) => api.delete(`/api/library/unbook-seat/${seatId}`, { signal }),
+  unbookSeat: (seatId) => api.delete(`/api/library/unbook-seat/${seatId}`),
 };
 
 // Certificates

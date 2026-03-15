@@ -86,17 +86,17 @@ export default function Dashboard() {
   }, []);
 
   const statCards = [
-    { label: 'Total Orders', value: stats.orders, icon: ShoppingBag, color: 'from-orange-400 to-red-400', textColor: 'text-orange-600', bg: 'bg-orange-50', shadow: 'shadow-orange-100' },
-    { label: 'Active Bookings', value: stats.bookings, icon: BookOpen, color: 'from-sky-400 to-blue-500', textColor: 'text-sky-600', bg: 'bg-sky-50', shadow: 'shadow-sky-100' },
-    { label: 'Pending Certificates', value: stats.certificates, icon: Award, color: 'from-emerald-400 to-teal-500', textColor: 'text-emerald-600', bg: 'bg-emerald-50', shadow: 'shadow-emerald-100' },
-    { label: 'Open Complaints', value: stats.open_complaints, icon: MessageSquare, color: 'from-purple-400 to-indigo-500', textColor: 'text-purple-600', bg: 'bg-purple-50', shadow: 'shadow-purple-100' },
+    { label: 'Total Orders', value: stats.orders || 0, icon: ShoppingBag, color: 'from-orange-400 to-red-400', textColor: 'text-orange-600', bg: 'bg-orange-50', shadow: 'shadow-orange-100' },
+    { label: 'Active Bookings', value: stats.bookings || 0, icon: BookOpen, color: 'from-sky-400 to-blue-500', textColor: 'text-sky-600', bg: 'bg-sky-50', shadow: 'shadow-sky-100' },
+    { label: 'Certificates', value: stats.certificates || 0, icon: Award, color: 'from-emerald-400 to-teal-500', textColor: 'text-emerald-600', bg: 'bg-emerald-50', shadow: 'shadow-emerald-100' },
+    { label: 'Complaints', value: stats.complaints || 0, icon: MessageSquare, color: 'from-purple-400 to-indigo-500', textColor: 'text-purple-600', bg: 'bg-purple-50', shadow: 'shadow-purple-100' },
   ];
 
   const lineData = {
-    labels: chartData.labels,
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
       label: 'Orders',
-      data: chartData.orders_per_day,
+      data: chartData.weekly_orders || [0, 0, 0, 0, 0, 0, 0],
       borderColor: '#4F46E5',
       backgroundColor: 'rgba(79, 70, 229, 0.08)',
       tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#4F46E5',
@@ -106,7 +106,7 @@ export default function Dashboard() {
   const doughnutData = {
     labels: ['Food', 'Library', 'Certificates', 'Complaints'],
     datasets: [{
-      data: [stats.my_total_orders, stats.active_bookings, stats.pending_certificates, stats.open_complaints],
+      data: [stats.orders || 0, stats.bookings || 0, stats.certificates || 0, stats.complaints || 0],
       backgroundColor: ['#F97316', '#0EA5E9', '#10B981', '#8B5CF6'],
       borderWidth: 0,
     }],
