@@ -208,7 +208,7 @@ async def init_db():
         canteens_collection._set_backend(real_db["canteens"])
         
         db_mode = "LIVE"
-        logger.info("✅ Connected to MongoDB (LIVE MODE)")
+        logger.info("✅ Connected to MongoDB Atlas (LIVE MODE)")
         await create_indexes(real_db)
     except Exception as e:
         db_mode = "MOCK"
