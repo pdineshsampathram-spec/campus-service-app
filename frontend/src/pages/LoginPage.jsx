@@ -24,7 +24,7 @@ export default function LoginPage() {
       // This will wait up to 30s with 10 retries
       await healthService.waitForBackend();
     } catch (err) {
-      toast.error("Server is taking longer than expected. Please try again.");
+      toast.error("Backend did not wake up in time. Please try again.");
       setPinging(false);
       window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
       return;

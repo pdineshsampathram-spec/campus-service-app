@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://campus-service-app.onrender.com';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -8,7 +8,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  timeout: 20000, // 20s timeout as requested for production stability
+  timeout: 30000, // 30s timeout as requested for production stability
 });
 
 // ... (interceptors omitted for brevity in replace_file_content if possible, but I'll replace the block)
@@ -70,7 +70,7 @@ api.interceptors.response.use(
     
     if (isRetryable && config && config.metadata.retryCount < 3) {
       config.metadata.retryCount += 1;
-      const delay = 3000; // 3s delay as requested
+      const delay = 2000; // 2s delay as requested
       
       console.log(`⚠️ Server waking up. Retrying in ${delay}ms... (Attempt ${config.metadata.retryCount})`);
       window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
