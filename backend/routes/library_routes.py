@@ -41,7 +41,7 @@ async def get_seats_status(date: str):
             })
             seats.append({
                 "seat_id": seat_id,
-                "isBooked": True if booking else False,
+                "booked": True if booking else False,
                 "bookedBy": booking.get("user_id") if booking else None
             })
     return seats

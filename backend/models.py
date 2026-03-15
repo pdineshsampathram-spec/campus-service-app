@@ -87,13 +87,13 @@ class OrderResponse(BaseModel):
 # ======= LIBRARY BOOKING MODELS =======
 class LibrarySeat(BaseModel):
     seat_id: str
-    isBooked: bool = False
+    booked: bool = False
     bookedBy: Optional[str] = None
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class LibrarySeatResponse(BaseModel):
     seat_id: str
-    isBooked: bool
+    booked: bool
     bookedBy: Optional[str] = None
 
 class LibraryBookingCreate(BaseModel):

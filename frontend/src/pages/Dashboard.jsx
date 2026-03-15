@@ -86,9 +86,9 @@ export default function Dashboard() {
   }, []);
 
   const statCards = [
-    { label: 'Total Orders', value: stats.my_total_orders, icon: ShoppingBag, color: 'from-orange-400 to-red-400', textColor: 'text-orange-600', bg: 'bg-orange-50', shadow: 'shadow-orange-100' },
-    { label: 'Active Bookings', value: stats.active_bookings, icon: BookOpen, color: 'from-sky-400 to-blue-500', textColor: 'text-sky-600', bg: 'bg-sky-50', shadow: 'shadow-sky-100' },
-    { label: 'Pending Certificates', value: stats.pending_certificates, icon: Award, color: 'from-emerald-400 to-teal-500', textColor: 'text-emerald-600', bg: 'bg-emerald-50', shadow: 'shadow-emerald-100' },
+    { label: 'Total Orders', value: stats.orders, icon: ShoppingBag, color: 'from-orange-400 to-red-400', textColor: 'text-orange-600', bg: 'bg-orange-50', shadow: 'shadow-orange-100' },
+    { label: 'Active Bookings', value: stats.bookings, icon: BookOpen, color: 'from-sky-400 to-blue-500', textColor: 'text-sky-600', bg: 'bg-sky-50', shadow: 'shadow-sky-100' },
+    { label: 'Pending Certificates', value: stats.certificates, icon: Award, color: 'from-emerald-400 to-teal-500', textColor: 'text-emerald-600', bg: 'bg-emerald-50', shadow: 'shadow-emerald-100' },
     { label: 'Open Complaints', value: stats.open_complaints, icon: MessageSquare, color: 'from-purple-400 to-indigo-500', textColor: 'text-purple-600', bg: 'bg-purple-50', shadow: 'shadow-purple-100' },
   ];
 

@@ -16,16 +16,16 @@ const zones = [
 
 
 
-const Seat = memo(({ seatId, isBooked, isSelected, onSeatSelect }) => {
+const Seat = memo(({ seatId, booked, isSelected, onSeatSelect }) => {
   return (
     <motion.button
-      whileHover={!isBooked ? { scale: 1.2 } : {}}
-      whileTap={!isBooked ? { scale: 0.9 } : {}}
-      disabled={isBooked}
+      whileHover={!booked ? { scale: 1.2 } : {}}
+      whileTap={!booked ? { scale: 0.9 } : {}}
+      disabled={booked}
       onClick={() => onSeatSelect(isSelected ? null : seatId)}
       title={seatId}
       className={`w-7 h-7 rounded-md text-xs font-semibold transition-all ${
-        isBooked
+        booked
           ? 'bg-red-100 dark:bg-red-900/30 text-red-300 cursor-not-allowed'
           : isSelected
           ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-400/40 scale-110'
@@ -38,28 +38,50 @@ const Seat = memo(({ seatId, isBooked, isSelected, onSeatSelect }) => {
 });
 
 function SeatGrid({ bookedSeats, selectedSeat, onSeatSelect }) {
-  const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+  // Group seats by row (e.g., F1-A1, F1-A2 -> row A)
+  const rows = useMemo(() => {
+    const grouped = {};
+    bookedSeats.forEach(seat => {
+      const rowChar = seat.seat_id.split('-')[1]?.[0];
+      if (rowChar) {
+        if (!grouped[rowChar]) grouped[rowChar] = [];
+        grouped[rowChar].push(seat);
+      }
+    });
+    return Object.keys(grouped).sort().map(key => ({
+      label: key,
+      seats: grouped[key].sort((a, b) => {
+        const numA = parseInt(a.seat_id.match(/\d+$/)?.[0] || 0);
+        const numB = parseInt(b.seat_id.match(/\d+$/)?.[0] || 0);
+        return numA - numB;
+      })
+    }));
+  }, [bookedSeats]);
+
+  if (bookedSeats.length === 0) {
+    return (
+      <div className="flex flex-col items-center py-10 text-slate-400 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
+        <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-3" />
+        <p className="text-sm font-medium">Fetching interactive seat map...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto">
       <div className="inline-block min-w-full">
         {rows.map(row => (
-          <div key={row} className="flex items-center gap-2 mb-2">
-            <span className="w-6 text-xs font-bold text-slate-400">{row}</span>
-            {Array.from({ length: 10 }, (_, col) => {
-              const seatId = `F1-${row}${col + 1}`;
-              const seatData = bookedSeats.find(s => s.seat_id === seatId);
-              const isBooked = seatData?.isBooked;
-              const isSelected = selectedSeat === seatId;
-              return (
-                <Seat
-                  key={seatId}
-                  seatId={seatId}
-                  isBooked={isBooked}
-                  isSelected={isSelected}
-                  onSeatSelect={onSeatSelect}
-                />
-              );
-            })}
+          <div key={row.label} className="flex items-center gap-2 mb-2">
+            <span className="w-6 text-xs font-bold text-slate-400">{row.label}</span>
+            {row.seats.map(seat => (
+              <Seat
+                key={seat.seat_id}
+                seatId={seat.seat_id}
+                booked={seat.booked}
+                isSelected={selectedSeat === seat.seat_id}
+                onSeatSelect={onSeatSelect}
+              />
+            ))}
           </div>
         ))}
         <div className="mt-3 text-xs text-slate-400 flex gap-2">

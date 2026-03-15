@@ -28,15 +28,13 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     my_complaints = await complaints_collection.count_documents({"user_id": user_id, "status": "open"})
 
     return {
-        "total_users": total_users,
-        "total_orders": total_orders,
-        "total_bookings": total_bookings,
-        "pending_certificates": pending_certs,
-        # Field names expected by Dashboard.jsx
+        "users": total_users,
+        "orders": total_orders,
+        "bookings": total_bookings,
+        "certificates": pending_certs,
+        # Also keep extras for the UI if needed, but primary are above
         "active_bookings": my_bookings,
-        "open_complaints": my_complaints,
-        "my_total_orders": my_orders,
-        "my_pending_certificates": my_certs
+        "open_complaints": my_complaints
     }
 
 @router.get("/chart-data")
