@@ -4,7 +4,11 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  timeout: 30000, // 30s timeout for cold starts
 });
 
 // Attach JWT token to every request
@@ -14,11 +18,13 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   
+  // Track retries
+  config.metadata = config.metadata || { retryCount: 0 };
+  
   // Track request start for cold-start detection
-  config.metadata = { startTime: new Date() };
   config.wakingTimer = setTimeout(() => {
     window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
-  }, 1500); // If no response in 1.5s, show waking message
+  }, 1500);
   
   return config;
 });
@@ -26,50 +32,69 @@ api.interceptors.request.use((config) => {
 // Standardize response unwrapping
 api.interceptors.response.use(
   (response) => {
-    // Clear waking timer
     if (response.config.wakingTimer) {
       clearTimeout(response.config.wakingTimer);
       window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
     }
     
-    // Backend returns { success, data, message }
-    const { success, data, message } = response.data;
-    
-    if (success) {
-      return { success: true, data, status: response.status };
+    // Support both wrapped {success, data, message} and direct data from backend
+    const resData = response.data;
+    if (resData && typeof resData === 'object' && ('success' in resData)) {
+      if (resData.success) {
+        return { success: true, data: resData.data, status: response.status };
+      }
+      return Promise.reject({
+        success: false,
+        message: resData.message || 'Operation failed',
+        status: response.status
+      });
     }
     
-    return Promise.reject({
-      success: false,
-      message: message || 'Operation failed',
-      status: response.status
-    });
+    // Direct response fallback
+    return { success: true, data: resData, status: response.status };
   },
-  (error) => {
-    // Clear waking timer on error
-    if (error.config?.wakingTimer) {
-      clearTimeout(error.config.wakingTimer);
+  async (error) => {
+    const { config, response } = error;
+    
+    if (config?.wakingTimer) {
+      clearTimeout(config.wakingTimer);
       window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
+    }
+
+    // RETRY LOGIC for Cold Starts (503 Service Unavailable, 504 Gateway Timeout, or Network Error)
+    const isRetryable = !response || response.status === 503 || response.status === 504;
+    
+    if (isRetryable && config && config.metadata.retryCount < 3) {
+      config.metadata.retryCount += 1;
+      const delay = Math.pow(2, config.metadata.retryCount) * 1000; // Exponential backoff
+      
+      console.log(`⚠️ Server cold start or busy. Retrying in ${delay}ms... (Attempt ${config.metadata.retryCount})`);
+      window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return api(config);
     }
 
     if (axios.isCancel(error)) {
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401) {
+    if (response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('campus_user');
-      window.location.href = '/login';
+      // Only redirect if not already on login/register to avoid loops
+      if (!['/login', '/register'].includes(window.location.pathname)) {
+        window.location.href = '/login';
+      }
     }
 
-    // Handle structured error from backend if available
-    const backendError = error.response?.data;
+    const backendError = response?.data;
     const errorMsg = backendError?.message || backendError?.detail || error.message || 'An unexpected error occurred';
     
     return Promise.reject({
       success: false,
       message: errorMsg,
-      status: error.response?.status
+      status: response?.status
     });
   }
 );
