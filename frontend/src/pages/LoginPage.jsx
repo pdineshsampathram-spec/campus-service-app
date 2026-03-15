@@ -17,19 +17,28 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Step 3: Server Status Check / Wake
+    // Step 1, 2 & 3: Robust Backend Wait
     setPinging(true);
     try {
       window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
-      await healthService.wakeServer();
-      window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
+      // This will wait up to 30s with 10 retries
+      await healthService.waitForBackend();
     } catch (err) {
-      // Background retry in axios interceptor will handle this
+      toast.error("Server is taking longer than expected. Please try again.");
+      setPinging(false);
+      window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
+      return;
     } finally {
+      // Don't hide the "server waking" toast/UI yet if we are about to login
+      // but clear the local pinging state to allow the next phase
       setPinging(false);
     }
 
     const result = await login(form.email, form.password);
+    
+    // Hide global loader after login attempt
+    window.dispatchEvent(new CustomEvent('server-waking', { detail: false }));
+
     if (result.success) {
       toast.success('Welcome back! 👋');
       navigate('/dashboard');

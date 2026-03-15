@@ -70,7 +70,7 @@ api.interceptors.response.use(
     
     if (isRetryable && config && config.metadata.retryCount < 3) {
       config.metadata.retryCount += 1;
-      const delay = 2000; // Fixed 2s delay as requested
+      const delay = 2000; // 2s delay as requested
       
       console.log(`⚠️ Server waking up. Retrying in ${delay}ms... (Attempt ${config.metadata.retryCount})`);
       window.dispatchEvent(new CustomEvent('server-waking', { detail: true }));
@@ -94,9 +94,9 @@ api.interceptors.response.use(
     const backendError = response?.data;
     let errorMsg = backendError?.message || backendError?.detail || error.message || 'An unexpected error occurred';
     
-    // Friendly message for cold starts/network issues
+    // Step 6: Friendly error message
     if (isRetryable) {
-      errorMsg = "Server is starting. Please wait a moment.";
+      errorMsg = "Server starting. Please try again in a moment.";
     }
     
     return Promise.reject({
@@ -110,6 +110,20 @@ api.interceptors.response.use(
 // Health Check / Ping
 export const healthService = {
   ping: (signal) => api.get('/', { signal }),
+  // Step 1: Backend Ready Check
+  waitForBackend: async () => {
+    let retries = 10;
+    while (retries > 0) {
+      try {
+        const res = await fetch(`${API_BASE}/health`);
+        if (res.ok) return true;
+      } catch (e) {}
+      
+      await new Promise(r => setTimeout(r, 3000));
+      retries--;
+    }
+    throw new Error("Backend not ready");
+  },
   wakeServer: async () => {
     try {
       await api.get('/health', { timeout: 10000 });
