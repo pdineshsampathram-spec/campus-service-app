@@ -7,6 +7,7 @@ from routes.library_routes import router as library_router
 from routes.certificate_routes import router as cert_router
 from routes.exam_routes import router as exam_router
 from routes.complaint_routes import router as complaint_router
+from routes.dashboard_routes import router as dashboard_router
 from routes.ai_assistant import router as ai_assistant_router
 from database import (
     users_collection, exam_notifications_collection,
@@ -110,6 +111,7 @@ app.include_router(library_router)
 app.include_router(cert_router)
 app.include_router(exam_router)
 app.include_router(complaint_router)
+app.include_router(dashboard_router)
 app.include_router(ai_assistant_router)
 
 EXAM_SEED_DATA = [

@@ -25,40 +25,32 @@ const activityColors = {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ total_orders: 0, active_bookings: 0, pending_certificates: 0, open_complaints: 0 });
+  const [stats, setStats] = useState({
+    total_orders: 0, active_bookings: 0, pending_certificates: 0, open_complaints: 0,
+    total_users: 0, total_bookings: 0, my_total_orders: 0
+  });
+  const [chartData, setChartData] = useState({
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    orders_per_day: [0, 0, 0, 0, 0, 0, 0],
+    bookings_per_day: [0, 0, 0, 0, 0, 0, 0]
+  });
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const fetchStats = async () => {
-          try { return await dashboardService.getStats(); } catch (err) { console.error('Stats error:', err); return { data: stats }; }
-        };
-        const fetchOrders = async () => {
-          try { return await orderService.getMyOrders(); } catch (err) { console.error('Orders error:', err); return { data: [] }; }
-        };
-        const fetchBookings = async () => {
-          try { return await libraryService.getMyBookings(); } catch (err) { console.error('Bookings error:', err); return { data: [] }; }
-        };
-        const fetchCerts = async () => {
-          try { return await certificateService.getMyRequests(); } catch (err) { console.error('Certs error:', err); return { data: [] }; }
-        };
-        const fetchComplaints = async () => {
-          try { return await complaintService.getMyComplaints(); } catch (err) { console.error('Complaints error:', err); return { data: [] }; }
-        };
-
-        const [statsRes, ordersRes, bookingsRes, certsRes, complaintsRes] = await Promise.all([
-          fetchStats(),
-          fetchOrders(),
-          fetchBookings(),
-          fetchCerts(),
-          fetchComplaints(),
+        const [statsRes, chartRes, ordersRes, bookingsRes, certsRes, complaintsRes] = await Promise.all([
+          dashboardService.getStats(),
+          dashboardService.getChartData(),
+          orderService.getMyOrders(),
+          libraryService.getMyBookings(),
+          certificateService.getMyRequests(),
+          complaintService.getMyComplaints(),
         ]);
 
-        if (statsRes && statsRes.data) {
-          setStats(statsRes.data);
-        }
+        if (statsRes?.data) setStats(statsRes.data);
+        if (chartRes?.data) setChartData(chartRes.data);
 
         // Build recent activity
         const activity = [
@@ -87,24 +79,24 @@ export default function Dashboard() {
       }
     };
     fetchData();
-    
+
     // Refresh every 30 seconds to keep data sync
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const statCards = [
-    { label: 'Total Orders', value: stats.total_orders, icon: ShoppingBag, color: 'from-orange-400 to-red-400', textColor: 'text-orange-600', bg: 'bg-orange-50', shadow: 'shadow-orange-100' },
+    { label: 'Total Orders', value: stats.my_total_orders, icon: ShoppingBag, color: 'from-orange-400 to-red-400', textColor: 'text-orange-600', bg: 'bg-orange-50', shadow: 'shadow-orange-100' },
     { label: 'Active Bookings', value: stats.active_bookings, icon: BookOpen, color: 'from-sky-400 to-blue-500', textColor: 'text-sky-600', bg: 'bg-sky-50', shadow: 'shadow-sky-100' },
     { label: 'Pending Certificates', value: stats.pending_certificates, icon: Award, color: 'from-emerald-400 to-teal-500', textColor: 'text-emerald-600', bg: 'bg-emerald-50', shadow: 'shadow-emerald-100' },
     { label: 'Open Complaints', value: stats.open_complaints, icon: MessageSquare, color: 'from-purple-400 to-indigo-500', textColor: 'text-purple-600', bg: 'bg-purple-50', shadow: 'shadow-purple-100' },
   ];
 
   const lineData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    labels: chartData.labels,
     datasets: [{
       label: 'Orders',
-      data: [2, 5, 3, 8, 4, 6, 3],
+      data: chartData.orders_per_day,
       borderColor: '#4F46E5',
       backgroundColor: 'rgba(79, 70, 229, 0.08)',
       tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#4F46E5',
@@ -114,7 +106,7 @@ export default function Dashboard() {
   const doughnutData = {
     labels: ['Food', 'Library', 'Certificates', 'Complaints'],
     datasets: [{
-      data: [stats.total_orders, stats.active_bookings, stats.pending_certificates, stats.open_complaints],
+      data: [stats.my_total_orders, stats.active_bookings, stats.pending_certificates, stats.open_complaints],
       backgroundColor: ['#F97316', '#0EA5E9', '#10B981', '#8B5CF6'],
       borderWidth: 0,
     }],

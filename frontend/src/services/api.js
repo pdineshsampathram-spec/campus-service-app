@@ -157,8 +157,9 @@ export const foodService = {
 
 // Library
 export const libraryService = {
-  bookSeat: (data, signal) => api.post('/api/library/book', data, { signal }),
+  bookSeat: (data, signal) => api.post('/api/library/book-seat', data, { signal }),
   getMyBookings: (signal) => api.get('/api/library/my-bookings', { signal }),
+  getTodaySeats: (signal) => api.get('/api/library/seats', { signal }),
   getSeatsStatus: (date, signal) => api.get(`/api/library/seats/${date}`, { signal }),
   cancelBooking: (id, signal) => api.delete(`/api/library/cancel/${id}`, { signal }),
   unbookSeat: (seatId, signal) => api.delete(`/api/library/unbook-seat/${seatId}`, { signal }),

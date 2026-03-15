@@ -21,17 +21,19 @@ def booking_helper(booking) -> dict:
         "created_at": booking.get("created_at", datetime.now(timezone.utc)),
     }
 
+@router.get("/seats")
+async def get_today_seats():
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return await get_seats_status(today)
+
 @router.get("/seats/{date}")
 async def get_seats_status(date: str):
-    # Initialize seats for this date if not exists or return existing
+    # ... (existing logic)
     seats = []
-    # In a real app we might have a fixed list of seats.
-    # For this demo, we'll assume 60 seats (F1-A1 to F1-F10)
     rows = ['A', 'B', 'C', 'D', 'E', 'F']
     for row in rows:
         for col in range(1, 11):
             seat_id = f"F1-{row}{col}"
-            # Check if this seat is booked for this date
             booking = await library_bookings_collection.find_one({
                 "seat_id": seat_id,
                 "date": date,
@@ -44,7 +46,7 @@ async def get_seats_status(date: str):
             })
     return seats
 
-@router.post("/book", response_model=LibraryBookingResponse)
+@router.post("/book-seat", response_model=LibraryBookingResponse)
 async def book_seat(booking_data: LibraryBookingCreate, current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
     
