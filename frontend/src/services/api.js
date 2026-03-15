@@ -187,6 +187,7 @@ export const complaintService = {
 // Dashboard
 export const dashboardService = {
   getStats: (signal) => api.get('/api/dashboard/stats', { signal }),
+  getChartData: (signal) => api.get('/api/dashboard/chart-data', { signal }),
 };
 
 export default api;

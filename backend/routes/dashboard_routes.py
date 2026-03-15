@@ -1,12 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from auth import get_current_user
-from database import (
-    users_collection, 
-    orders_collection, 
-    library_bookings_collection, 
-    certificate_requests_collection,
-    complaints_collection
-)
 from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
