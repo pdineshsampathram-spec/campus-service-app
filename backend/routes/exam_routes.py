@@ -28,23 +28,11 @@ async def get_exams(current_user: dict = Depends(get_current_user)):
         exams.append(exam_helper(exam))
     return exams
 
-@router.post("/", response_model=ExamNotificationResponse)
-async def create_exam(exam_data: ExamNotificationCreate, current_user: dict = Depends(get_current_user)):
-    exam_id = str(uuid.uuid4())
-    exam_doc = {
-        "_id": exam_id,
-        "exam_name": exam_data.exam_name,
-        "subject": exam_data.subject,
-        "date": exam_data.date,
-        "time": exam_data.time,
-        "location": exam_data.location,
-        "duration": exam_data.duration,
-        "semester": exam_data.semester,
-        "department": exam_data.department,
-        "created_at": datetime.now(timezone.utc),
-    }
-    await exam_notifications_collection.insert_one(exam_doc)
-    return exam_helper(exam_doc)
+    try:
+        await exam_notifications_collection.insert_one(exam_doc)
+        return exam_helper(exam_doc)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/upcoming")
 async def get_upcoming_exams(current_user: dict = Depends(get_current_user)):

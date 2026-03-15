@@ -20,22 +20,11 @@ def order_helper(order) -> dict:
         "estimated_time": order.get("estimated_time", 20),
     }
 
-@router.post("/", response_model=OrderResponse)
-async def create_order(order_data: OrderCreate, current_user: dict = Depends(get_current_user)):
-    order_id = str(uuid.uuid4())
-    order_doc = {
-        "_id": order_id,
-        "user_id": str(current_user["_id"]),
-        "items": [item.dict() for item in order_data.items],
-        "canteen": order_data.canteen,
-        "total_amount": order_data.total_amount,
-        "status": "confirmed",
-        "special_instructions": order_data.special_instructions or "",
-        "estimated_time": 20,
-        "created_at": datetime.now(timezone.utc),
-    }
-    await orders_collection.insert_one(order_doc)
-    return order_helper(order_doc)
+    try:
+        await orders_collection.insert_one(order_doc)
+        return order_helper(order_doc)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-orders")
 async def get_my_orders(current_user: dict = Depends(get_current_user)):

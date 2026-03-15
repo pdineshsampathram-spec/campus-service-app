@@ -26,25 +26,11 @@ def cert_helper(cert) -> dict:
         "estimated_days": cert.get("estimated_days", 7),
     }
 
-@router.post("/request", response_model=CertificateRequestResponse)
-async def request_certificate(cert_data: CertificateRequestCreate, current_user: dict = Depends(get_current_user)):
-    cert_id = str(uuid.uuid4())
-    request_id = generate_request_id()
-    cert_doc = {
-        "_id": cert_id,
-        "request_id": request_id,
-        "user_id": str(current_user["_id"]),
-        "certificate_type": cert_data.certificate_type.value,
-        "student_name": cert_data.student_name,
-        "student_id": cert_data.student_id,
-        "reason": cert_data.reason,
-        "additional_info": cert_data.additional_info or "",
-        "status": "pending",
-        "estimated_days": 7,
-        "created_at": datetime.now(timezone.utc),
-    }
-    await certificate_requests_collection.insert_one(cert_doc)
-    return cert_helper(cert_doc)
+    try:
+        await certificate_requests_collection.insert_one(cert_doc)
+        return cert_helper(cert_doc)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-requests")
 async def get_my_requests(current_user: dict = Depends(get_current_user)):
@@ -59,6 +45,6 @@ async def get_certificate(cert_id: str, current_user: dict = Depends(get_current
         "_id": cert_id,
         "user_id": str(current_user["_id"])
     })
-    if not cert:
+    if cert is None:
         raise HTTPException(status_code=404, detail="Certificate request not found")
     return cert_helper(cert)

@@ -25,22 +25,11 @@ def complaint_helper(complaint) -> dict:
         "created_at": complaint.get("created_at", datetime.now(timezone.utc)),
     }
 
-@router.post("/", response_model=ComplaintResponse)
-async def create_complaint(complaint_data: ComplaintCreate, current_user: dict = Depends(get_current_user)):
-    complaint_id_str = str(uuid.uuid4())
-    complaint_doc = {
-        "_id": complaint_id_str,
-        "complaint_id": generate_complaint_id(),
-        "user_id": str(current_user["_id"]),
-        "category": complaint_data.category.value,
-        "subject": complaint_data.subject,
-        "description": complaint_data.description,
-        "status": "open",
-        "priority": complaint_data.priority,
-        "created_at": datetime.now(timezone.utc),
-    }
-    await complaints_collection.insert_one(complaint_doc)
-    return complaint_helper(complaint_doc)
+    try:
+        await complaints_collection.insert_one(complaint_doc)
+        return complaint_helper(complaint_doc)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-complaints")
 async def get_my_complaints(current_user: dict = Depends(get_current_user)):
