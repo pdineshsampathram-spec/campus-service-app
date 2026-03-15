@@ -21,14 +21,19 @@ def user_helper(user) -> dict:
 
 @router.post("/register", response_model=Token)
 async def register(user_data: UserCreate):
-    # Check if email already exists
-    existing = await users_collection.find_one({"email": user_data.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    existing_id = await users_collection.find_one({"student_id": user_data.student_id})
-    if existing_id:
-        raise HTTPException(status_code=400, detail="Student ID already registered")
+    try:
+        # Check if email already exists
+        existing = await users_collection.find_one({"email": user_data.email})
+        if existing is not None:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        existing_id = await users_collection.find_one({"student_id": user_data.student_id})
+        if existing_id is not None:
+            raise HTTPException(status_code=400, detail="Student ID already registered")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
     user_id = str(uuid.uuid4())
     hashed_password = get_password_hash(user_data.password)
@@ -59,8 +64,12 @@ async def register(user_data: UserCreate):
 
 @router.post("/login", response_model=Token)
 async def login(user_data: UserLogin):
-    user = await users_collection.find_one({"email": user_data.email})
-    if not user or not verify_password(user_data.password, user["password"]):
+    try:
+        user = await users_collection.find_one({"email": user_data.email})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if user is None or not verify_password(user_data.password, user["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"

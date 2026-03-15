@@ -13,29 +13,28 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 @router.get("/stats")
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
-    # Global stats for admin/overview (or scoped to user if needed, 
-    # but the prompt says "total_users", "total_orders" implying global context)
-    total_users = await users_collection.count_documents({})
-    total_orders = await orders_collection.count_documents({})
-    total_bookings = await library_bookings_collection.count_documents({"status": "confirmed"})
-    pending_certs = await certificate_requests_collection.count_documents({"status": "pending"})
-    
-    # User specific stats for the UI cards (matching Dashboard.jsx initial state)
-    user_id = str(current_user["_id"])
-    my_orders = await orders_collection.count_documents({"user_id": user_id})
-    my_bookings = await library_bookings_collection.count_documents({"user_id": user_id, "status": "confirmed"})
-    my_certs = await certificate_requests_collection.count_documents({"user_id": user_id, "status": "pending"})
-    my_complaints = await complaints_collection.count_documents({"user_id": user_id, "status": "open"})
+    try:
+        total_users = await users_collection.count_documents({})
+        total_orders = await orders_collection.count_documents({})
+        total_bookings = await library_bookings_collection.count_documents({"status": "confirmed"})
+        pending_certs = await certificate_requests_collection.count_documents({"status": "pending"})
+        
+        user_id = str(current_user["_id"])
+        my_orders = await orders_collection.count_documents({"user_id": user_id})
+        my_bookings = await library_bookings_collection.count_documents({"user_id": user_id, "status": "confirmed"})
+        my_certs = await certificate_requests_collection.count_documents({"user_id": user_id, "status": "pending"})
+        my_complaints = await complaints_collection.count_documents({"user_id": user_id, "status": "open"})
 
-    return {
-        "users": total_users,
-        "orders": total_orders,
-        "bookings": total_bookings,
-        "certificates": pending_certs,
-        # Also keep extras for the UI if needed, but primary are above
-        "active_bookings": my_bookings,
-        "open_complaints": my_complaints
-    }
+        return {
+            "users": total_users,
+            "orders": total_orders,
+            "bookings": total_bookings,
+            "certificates": pending_certs,
+            "active_bookings": my_bookings,
+            "open_complaints": my_complaints
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Stats aggregation failed: {str(e)}")
 
 @router.get("/chart-data")
 async def get_chart_data(current_user: dict = Depends(get_current_user)):

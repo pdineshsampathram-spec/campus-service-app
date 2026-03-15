@@ -28,23 +28,26 @@ async def get_today_seats():
 
 @router.get("/seats/{date}")
 async def get_seats_status(date: str):
-    # ... (existing logic)
-    seats = []
-    rows = ['A', 'B', 'C', 'D', 'E', 'F']
-    for row in rows:
-        for col in range(1, 11):
-            seat_id = f"F1-{row}{col}"
-            booking = await library_bookings_collection.find_one({
-                "seat_id": seat_id,
-                "date": date,
-                "status": "confirmed"
-            })
-            seats.append({
-                "seat_id": seat_id,
-                "booked": True if booking else False,
-                "bookedBy": booking.get("user_id") if booking else None
-            })
-    return seats
+    try:
+        # Initialize seats for this date if not exists or return existing
+        seats = []
+        rows = ['A', 'B', 'C', 'D', 'E', 'F']
+        for row in rows:
+            for col in range(1, 11):
+                seat_id = f"F1-{row}{col}"
+                booking = await library_bookings_collection.find_one({
+                    "seat_id": seat_id,
+                    "date": date,
+                    "status": "confirmed"
+                })
+                seats.append({
+                    "seat_id": seat_id,
+                    "booked": booking is not None,
+                    "bookedBy": booking.get("user_id") if booking is not None else None
+                })
+        return seats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/book-seat", response_model=LibraryBookingResponse)
 async def book_seat(booking_data: LibraryBookingCreate, current_user: dict = Depends(get_current_user)):

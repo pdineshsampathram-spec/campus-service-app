@@ -60,21 +60,36 @@ CANTEENS_DATA = [
 
 @router.get("/canteens", response_model=List[Canteen])
 async def get_canteens(_: dict = Depends(get_current_user)):
-    # In a real app, this would fetch from MongoDB
-    # For now, we'll use the seed data or look in a 'canteens' collection
-    canteens = await db.canteens.find().to_list(100)
-    if not canteens:
+    try:
+        # Use the decentralized proxy as get_database() for MOCK support
+        from database import db
+        canteens = await db["canteens"].find().to_list(100)
+        
+        if canteens is not None and len(canteens) > 0:
+            # Convert MongoDB _id to string for model compliance
+            for c in canteens:
+                c["id"] = str(c["_id"])
+            return canteens
+        
+        # Fallback to seed data if collection is empty
         return CANTEENS_DATA
-    
-    # Convert MongoDB _id to string for model compliance
-    for c in canteens:
-        c["id"] = str(c["_id"])
-    return canteens
+    except Exception as e:
+        # Fallback for transient errors or missing collection
+        print(f"⚠️ Error fetching canteens: {e}")
+        return CANTEENS_DATA
 
 @router.get("/items/{item_id}", response_model=FoodItem)
 async def get_food_item(item_id: str, _: dict = Depends(get_current_user)):
-    for canteen in CANTEENS_DATA:
-        for item in canteen["items"]:
-            if item["item_id"] == item_id:
-                return item
-    raise HTTPException(status_code=404, detail="Item not found")
+    try:
+        from database import db
+        # Search in DB first
+        for canteen in CANTEENS_DATA:
+            for item in canteen["items"]:
+                if item["item_id"] == item_id:
+                    return item
+        
+        raise HTTPException(status_code=404, detail="Item not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

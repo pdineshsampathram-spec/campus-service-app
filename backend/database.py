@@ -2,6 +2,7 @@ import motor.motor_asyncio
 import asyncio
 from config import settings
 import logging
+from core.database import init_db_core, get_database
 
 logger = logging.getLogger("uvicorn")
 
@@ -149,13 +150,15 @@ class DatabaseProxy:
         self._current = None
 
     def __getattr__(self, name):
-        if self._current:
-            return getattr(self._current, name)
+        current = self._current
+        if current is not None:
+            return getattr(current, name)
         return CollectionProxy(name)
 
     def __getitem__(self, name):
-        if self._current:
-            return self._current[name]
+        current = self._current
+        if current is not None:
+            return current[name]
         return CollectionProxy(name)
 
     def _set_backend(self, backend):
@@ -188,14 +191,9 @@ async def create_indexes(db_instance):
 
 async def init_db():
     global db_mode
-    try:
-        client = motor.motor_asyncio.AsyncIOMotorClient(
-            settings.mongodb_url, 
-            serverSelectionTimeoutMS=2000
-        )
-        await client.admin.command('ping')
-        real_db = client[settings.database_name]
-        
+    real_db = await init_db_core()
+    
+    if real_db is not None:
         # Switch all proxies to real MongoDB collections
         db._set_backend(real_db)
         users_collection._set_backend(real_db["users"])
@@ -210,7 +208,6 @@ async def init_db():
         db_mode = "LIVE"
         logger.info("✅ Connected to MongoDB Atlas (LIVE MODE)")
         await create_indexes(real_db)
-    except Exception as e:
+    else:
         db_mode = "MOCK"
-        logger.warning(f"⚠️ MongoDB connection failed: {e}")
         logger.warning("🚀 Starting in MOCK MODE (In-memory storage)")
