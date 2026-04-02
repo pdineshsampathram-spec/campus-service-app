@@ -1,7 +1,7 @@
 # 🎓 CampusHub – Campus Service Platform
 
 CampusHub is a **full-stack campus service management platform** designed to simplify everyday student services in a university environment.
-The application integrates multiple campus utilities into a **single modern dashboard**, allowing students to manage services such as food orders, library seat booking, certificates, exam alerts, and complaints.\
+The application integrates multiple campus utilities into a **single modern dashboard**, allowing students to manage services such as food orders, library seat booking, certificates, exam alerts, and complaints.
 
 This project demonstrates a **real-world full-stack architecture** using a modern frontend, API backend, and cloud database deployment.
 
